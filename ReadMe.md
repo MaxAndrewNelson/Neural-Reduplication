@@ -1,9 +1,9 @@
-#Neural Reduplication
+# Neural Reduplication
 
-##About
+## About
 This repo contains code for learning reduplication (or more generally phonological transformations) with encoder-decoder networks. Results from experiments run with this code are reported in Nelson, Dolatian, Rawksi, and Prickett (2020)
 
-##Contents
+## Contents
 `src` contains all necessary code
 
 `data` contains sample reduplication data files, created by transducers generated from a typology of natural language reduplication patterns (Dolatian and Heinz, 2019). 
@@ -26,7 +26,7 @@ You can create your own data files by following the format shown in `data`. Each
 *   `dropout_prob` - float dropout probability during training, default `0.1` 
 
 
-##Running the models
+## Running the model
 Requirements: Python 3.6+ with NumPy and Pytorch (1.0 or later)
 
 A sample version of the model can be run from the command line with:
