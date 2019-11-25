@@ -1,4 +1,4 @@
-input_file	../data/CV_initial_reduplication.txt
+input_file	./data/CV_initial_reduplication.txt
 teacher_force	True
 attention	True
 attention_type	weighted
