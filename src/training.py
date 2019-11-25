@@ -7,34 +7,47 @@ import torch.nn.functional as F
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
  
-def batch_predict(inputs, targets, device, enc, dec, ix2phone, final=False):
+def batch_predict(inputs, targets, device, enc, dec, ix2phone, bsz=100, final=False):
     if final == True:
         enc.eval()
         dec.eval()
 
-    all_outputs = []
+    total_correct = 0
 
-    bsz, input_length = inputs.size()
-    encoder_hidden = enc.initHidden(batch_size=bsz)
-    encoder_outputs = torch.zeros(bsz, enc.hidden_size, input_length, device=device) #will store the outputs for the encoder at all timepoints
-    output_length = 2*input_length+1 #longest possible output, stop criterion if no end symbol is written
+    num_inputs, input_length = inputs.size()
+    num_inputs, output_length = targets.size()
+    batches = [(start, start + bsz) for start in range(0, num_inputs, bsz)]
 
-    for ei in range(input_length):
-        batch_input = inputs[:,ei].unsqueeze(1)
-        encoder_output, encoder_hidden = enc.forward(batch_input, encoder_hidden)
-        encoder_outputs[:,:,ei] = encoder_output.squeeze(1)
+    for batch_ix, (start, end) in enumerate(batches):
+      batch_X = inputs[start:end]
+      batch_Y = targets[start:end]
 
-    decoder_input = inputs[:,0].unsqueeze(1)
-    decoder_hidden = encoder_hidden 
+      all_outputs = []
 
-    for di in range(output_length): 
-        decoder_output, decoder_hidden, attn = dec.forward(decoder_input, decoder_hidden, encoder_outputs)
-        topv, topi = decoder_output.topk(1) #just the one most likely index in the output
-        decoder_input = topi.detach().squeeze(1)  # detach from history as input
+      bsz, input_length = batch_X.size()
+      encoder_hidden = enc.initHidden(batch_size=bsz)
+      encoder_state = enc.initHidden(batch_size=bsz)
+      encoder_outputs = torch.zeros(bsz, enc.hidden_size, input_length, device=device) #will store the outputs for the encoder at all timepoints
+      output_length = 2*input_length+1 #longest possible output, stop early criterion of no end symbol is written
 
-        items = [int(x) for x in decoder_input]
-        as_chars = [ix2phone[x] for x in items]
-        all_outputs.append(as_chars)
+      for ei in range(input_length):
+          batch_input = batch_X[:,ei].unsqueeze(1)
+          encoder_output, encoder_hidden, state = enc.forward(batch_input, encoder_hidden, encoder_state)
+          encoder_outputs[:,:,ei] = encoder_output.squeeze(1)
+
+      decoder_input = batch_X[:,0].unsqueeze(1)
+      decoder_hidden = encoder_hidden
+      decoder_state = encoder_state
+
+
+      for di in range(output_length): 
+          decoder_output, decoder_hidden, state, attn = dec.forward(decoder_input, decoder_hidden, decoder_state, encoder_outputs)
+          topv, topi = decoder_output.topk(1) #just the one most likely index in the output
+          decoder_input = topi.detach().squeeze(1)  # detach from history as input
+
+          items = [int(x) for x in decoder_input]
+          as_chars = [ix2phone[x] for x in items]
+          all_outputs.append(as_chars)
 
     zipped = list(zip(*all_outputs))
     preds = [''.join(x) for x in zipped]
@@ -69,22 +82,26 @@ def batch_train(encoder, decoder, device, inputs, targets, devInputs, devTargets
 
             batch_X = inputs[start:end]
             batch_Y = targets[start:end]
+
+            bsz = batch_X.size()[0] #change the batch size - for cases where the actual batch is less than bsz because len(data)%bsz isn't 0
             
             encoder_optimizer.zero_grad()
             decoder_optimizer.zero_grad()
             encoder_outputs = torch.zeros(bsz, encoder.hidden_size, input_length, device=device) #will store the outputs for the encoder at all timepoints
-            encoder_hidden = encoder.initHidden(batch_size=batch_X.size()[0])
+            encoder_hidden = encoder.initHidden(batch_size=bsz)
+            encoder_state = encoder.initHidden(batch_size=bsz)
 
             for ei in range(input_length):
                 batch_input = batch_X[:,ei].unsqueeze(1)
-                encoder_output, encoder_hidden = encoder.forward(batch_input, encoder_hidden)
+                encoder_output, encoder_hidden, state = encoder.forward(batch_input, encoder_hidden, encoder_state)
                 encoder_outputs[:,:,ei] = encoder_hidden.squeeze(1)
 
             decoder_input = batch_X[:,0].unsqueeze(1)
-            decoder_hidden = encoder_hidden 
+            decoder_hidden = encoder_hidden
+            decoder_state = encoder_state
 
             for di in range(output_length):
-                decoder_output, decoder_hidden, attn = decoder(decoder_input, decoder_hidden, encoder_outputs)
+                decoder_output, decoder_hidden, state, attn = decoder.forward(decoder_input, decoder_hidden, decoder_state, encoder_outputs)
                 topv, topi = decoder_output.topk(1) #just the one most likely index in the output
                 if teacher_forcing == True:
                   decoder_input = batch_Y[:,di].unsqueeze(1) #teacher forcing
