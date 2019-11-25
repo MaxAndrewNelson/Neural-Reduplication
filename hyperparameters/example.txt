@@ -1,0 +1,12 @@
+input_file	../data/CV_initial_reduplication.txt
+teacher_force	True
+attention	True
+attention_type	weighted
+recurrent_type	RNN
+embedding_size	16
+hidden_size	64
+num_epochs	50
+print_freq	5
+batch_size	100
+learning_rate	0.0005
+dropout_prob	0.0
