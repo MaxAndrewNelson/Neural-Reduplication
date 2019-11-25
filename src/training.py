@@ -63,7 +63,7 @@ def batch_predict(inputs, targets, device, enc, dec, ix2phone, bsz=100, final=Fa
     
     return(prop_correct)
   
-def batch_train(encoder, decoder, device, inputs, targets, devInputs, devTargets, ix2phone, n_epochs, bsz, learning_rate, teacher_forcing, print_every, test_every=50):
+def batch_train(encoder, decoder, device, inputs, targets, devInputs, devTargets, ix2phone, n_epochs, bsz, learning_rate, teacher_forcing, print_every, test_every=25):
     encoder_optimizer = optim.Adam(encoder.parameters(), lr=learning_rate)
     decoder_optimizer = optim.Adam(decoder.parameters(), lr=learning_rate)   
     
