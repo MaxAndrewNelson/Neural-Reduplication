@@ -79,7 +79,7 @@ class DecoderRNN(nn.Module):
             
           else:
             attn_weights = torch.bmm(hidden.transpose(0,1), encoder_outputs)
-            attn_weights = nn.functional.softmax(attn_weights, 2)
+            attn_weights = F.softmax(attn_weights, 2)
             attn_applied = torch.bmm(attn_weights, encoder_outputs.transpose(1,2))
             output = torch.cat((embedded, attn_applied), 2)
             output = self.attn_combine(output)
